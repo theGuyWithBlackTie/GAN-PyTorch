@@ -23,7 +23,7 @@ def train(generator, discriminator, optimizer_G, optimizer_D, train_loader, num_
     # Ground truth for real images is 1
     real_images_ground_truth = torch.ones((config.BATCH_SIZE, 1), device = device)
     # Ground truth for fake images is 0
-    fake_images_ground_truth = torch.zeros((config.BATCH_SIZE, 0), device = device)
+    fake_images_ground_truth = torch.zeros((config.BATCH_SIZE, 1), device = device)
 
 
     # constants for tracking training
@@ -45,7 +45,7 @@ def train(generator, discriminator, optimizer_G, optimizer_D, train_loader, num_
             real_images_loss = adversarial_loss(real_images_prediction, real_images_ground_truth)
             
             # Generate fake images
-            latent_batch           = get_gaussian_latent_batch(config.BATCH_SIZE, config.LATENT_SIZE)
+            latent_batch           = get_gaussian_latent_batch(config.BATCH_SIZE, config.LATENT_DIM)
             fake_images            = generator(latent_batch)
             # Calling detatch() to detach the fake images from the computation graph for Discriminator
             fake_images_prediction = discriminator(fake_images.detach())
@@ -62,7 +62,7 @@ def train(generator, discriminator, optimizer_G, optimizer_D, train_loader, num_
 
             optimizer_G.zero_grad()
             # Generate fake images
-            latent_batch             = get_gaussian_latent_batch(config.BATCH_SIZE, config.LATENT_SIZE)
+            latent_batch             = get_gaussian_latent_batch(config.BATCH_SIZE, config.LATENT_DIM)
             fake_images              = generator(latent_batch)
             discriminator_prediction = discriminator(fake_images)
             generator_loss           = adversarial_loss(discriminator_prediction, real_images_ground_truth)
@@ -78,9 +78,8 @@ def train(generator, discriminator, optimizer_G, optimizer_D, train_loader, num_
 
             # Saving intermediary generator images
             if batch_idx % debug_imagery_freq == 0:
-                print('Saving images...')
                 with torch.no_grad():
-                    latent_batch = get_gaussian_latent_batch(config.BATCH_SIZE, config.LATENT_SIZE)
+                    latent_batch = get_gaussian_latent_batch(config.BATCH_SIZE, config.LATENT_DIM)
                     fake_images = generator(latent_batch)
                     fake_images = fake_images.detach().cpu()
 
@@ -89,11 +88,22 @@ def train(generator, discriminator, optimizer_G, optimizer_D, train_loader, num_
 
 
             # Save generator checkpoint
-            if (epoch + 1) % checkpoint_freq == 0:
-                print('Saving checkpoint...')
-                torch.save(generator.state_dict(), f'{config.MODEL_OUTPUT_PATH}/generator_checkpoint_{epoch}.pt')
+        if (epoch + 1) % checkpoint_freq == 0:
+            torch.save(generator.state_dict(), f'{config.MODEL_OUTPUT_PATH}/generator_checkpoint_{epoch}.pt')
 
     # Saving final generator checkpoint
     print('Saving final checkpoint...')
     torch.save(generator.state_dict(), f'{config.MODEL_OUTPUT_PATH}/generator_checkpoint_final.pt')
+
+
+
+
+def generate_images(generator, device = config.DEVICE):
+    with torch.no_grad():
+        latent_batch = get_gaussian_latent_batch(config.BATCH_SIZE, config.LATENT_DIM)
+        fake_images = generator(latent_batch)
+        fake_images = fake_images.detach().cpu()
+
+        fake_images_resized = nn.Upsample(scale_factor = 2.5, mode = 'nearest')(fake_images)
+        save_image(fake_images_resized, f'{config.IMAGES_OUTPUT_PATH}/final.png')
                 

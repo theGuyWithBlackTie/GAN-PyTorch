@@ -8,7 +8,7 @@ class GeneratorNet(nn.Module):
         super(GeneratorNet, self).__init__()
         self.generated_img_shape = img_shape
         self.latent_dim          = latent_dim
-        num_neurons_per_layer = [self.latent_dim, 256, 512, 1024, self.img_shape[0] * self.img_shape[1]]
+        num_neurons_per_layer = [self.latent_dim, 256, 512, 1024, img_shape[0] * img_shape[1]]
 
         def block(in_feat, out_feat, normalize=True, activation=None):
             layers = [nn.Linear(in_feat, out_feat)]
