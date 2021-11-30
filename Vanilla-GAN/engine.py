@@ -1,6 +1,8 @@
 import time
 
 import torch
+import torch.nn as nn
+from torchvision.utils import save_image
 
 import config
 
@@ -29,7 +31,7 @@ def train(generator, discriminator, optimizer_G, optimizer_D, train_loader, num_
     debug_imagery_freq = 50
     checkpoint_freq    = 2
     ts                 = time.time()
-    
+
     for epoch in range(num_epochs):
         for batch_idx, (real_images, _) in enumerate(train_loader):
             real_images = real_images.to(device)
@@ -71,5 +73,27 @@ def train(generator, discriminator, optimizer_G, optimizer_D, train_loader, num_
                 prefix = 'GAN training: time elapsed'
                 generator_losses.append(generator_loss.item())
                 discriminator_losses.append(discriminator_loss.item())
-                print(f'{prefix} = {(time.time() - ts):.2f} [s] | epoch={epoch + 1} | batch= [{batch_idx + 1}/{len(mnist_data_loader)}] | G_Loss: [{generator_loss.item()}] | D_Loss: [{discriminator_loss.item()}]')
+                print(f'{prefix} = {(time.time() - ts):.2f} [s] | epoch={epoch + 1} | batch= [{batch_idx + 1}/{len(train_loader)}] | G_Loss: [{generator_loss.item()}] | D_Loss: [{discriminator_loss.item()}]')
+
+
+            # Saving intermediary generator images
+            if batch_idx % debug_imagery_freq == 0:
+                print('Saving images...')
+                with torch.no_grad():
+                    latent_batch = get_gaussian_latent_batch(config.BATCH_SIZE, config.LATENT_SIZE)
+                    fake_images = generator(latent_batch)
+                    fake_images = fake_images.detach().cpu()
+
+                    fake_images_resized = nn.Upsample(scale_factor = 2.5, mode = 'nearest')(fake_images)
+                    save_image(fake_images_resized, f'{config.IMAGES_OUTPUT_PATH}/{epoch}_{batch_idx}.png')
+
+
+            # Save generator checkpoint
+            if (epoch + 1) % checkpoint_freq == 0:
+                print('Saving checkpoint...')
+                torch.save(generator.state_dict(), f'{config.MODEL_OUTPUT_PATH}/generator_checkpoint_{epoch}.pt')
+
+    # Saving final generator checkpoint
+    print('Saving final checkpoint...')
+    torch.save(generator.state_dict(), f'{config.MODEL_OUTPUT_PATH}/generator_checkpoint_final.pt')
                 
